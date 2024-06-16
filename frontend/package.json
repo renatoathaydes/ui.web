@@ -1,0 +1,12 @@
+{
+  "version": "1.0",
+  "devDependencies": {
+    "esbuild": "0.21.5"
+  },
+  "dependencies": {
+    "highlight.js": "^11.9.0"
+  },
+  "scripts": {
+    "build": "npx esbuild ./entrypoint.ts --bundle --sourcemap --outdir=out"
+  }
+}

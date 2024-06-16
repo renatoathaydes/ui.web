@@ -1,0 +1,22 @@
+{
+  "version": "1.0",
+  "devDependencies": {
+    "@types/finalhandler": "^1.2.3",
+    "@types/node": "^20.14.2",
+    "@types/serve-static": "^1.15.7",
+    "@types/ws": "^8.5.10",
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "esbuild": "0.21.5",
+    "finalhandler": "^1.2.0",
+    "serve-static": "^1.15.0",
+    "ws": "^8.17.1"
+  },
+  "scripts": {
+    "buildFE": "cd ../frontend && npm install && npm run build",
+    "buildBE": "npx esbuild src/server.mts --bundle --platform=node --sourcemap --target=node20 --outdir=out",
+    "build": "npm run buildFE && npm run buildBE",
+    "start": "node --enable-source-maps out/server.js"
+  }
+}
