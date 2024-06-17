@@ -2,21 +2,23 @@ import http from 'http';
 import serveStatic from 'serve-static';
 import finalHandler from 'finalhandler';
 import { WsServer } from './ws.mjs';
+import { buildFrontend } from './builder.mjs';
 
-const serveFile = serveStatic('../frontend', { index: ['index.html', 'index.htm'] });
+async function main() {
+    const stopWatcher = await buildFrontend();
 
-const server = http.createServer((req, res) => {
-    if (req.url === '/') {
-        res.setHeader('Content-Type', 'text/html');
-        res.write('<h1>Hello world</h1>');
-        res.end();
-        return;
-    }
-    serveFile(req, res, finalHandler(req, res));
-});
+    const serveFile = serveStatic('../frontend/assets', { index: ['index.html'] });
 
-const ws = new WsServer();
+    const server = http.createServer((req, res) => {
+        serveFile(req, res, finalHandler(req, res));
+    });
 
-server.on('upgrade', (req, socket, head) => ws.handleUpgrade(req, socket, head));
-server.listen();
-console.log(`Server running at http://localhost:${server.address().port}/`);
+    const ws = new WsServer();
+
+    server.on('upgrade', (req, socket, head) => ws.handleUpgrade(req, socket, head));
+    server.on('close', stopWatcher);
+    server.listen();
+    console.log(`Server running at http://localhost:${server.address().port}/`);
+}
+
+main();

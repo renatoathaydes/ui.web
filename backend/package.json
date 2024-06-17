@@ -14,9 +14,10 @@
     "ws": "^8.17.1"
   },
   "scripts": {
-    "buildFE": "cd ../frontend && npm install && npm run build",
-    "buildBE": "npx esbuild src/server.mts --bundle --platform=node --sourcemap --target=node20 --outdir=out",
+    "buildFE": "cd ../frontend && npm install",
+    "buildBE": "npx esbuild src/server.mts --bundle --external:'esbuild' --platform=node --sourcemap --target=node20 --outdir=out",
     "build": "npm run buildFE && npm run buildBE",
-    "start": "node --enable-source-maps out/server.js"
+    "start": "node --enable-source-maps out/server.js",
+    "clean": "rm -rf out && rm -rf ../frontend/assets/out"
   }
 }
