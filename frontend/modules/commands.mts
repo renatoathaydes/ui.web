@@ -8,6 +8,7 @@ export function createCommandInput() {
     div.id = id;
     const el = document.createElement('input');
     const out = document.createElement('div');
+    out.style.margin = '6px 4px';
     el.type = 'text';
     el.size = 50;
     el.onkeyup = (e) => {
@@ -16,41 +17,31 @@ export function createCommandInput() {
             if (historyIndex < history.length) {
                 el.value = history[historyIndex];
             }
-        }
-        if (e.key === 'ArrowDown') {
+        } else if (e.key === 'ArrowDown') {
             historyIndex = Math.min(history.length, historyIndex + 1);
             if (historyIndex < history.length) {
                 el.value = history[historyIndex];
             } else {
                 el.value = '';
             }
-        }
-    };
-    el.placeholder = 'Enter UI.WEB command here';
-    el.onchange = () => {
-        const cmd = el.value;
-        if (cmd) {
-            history.push(cmd);
-            pushHtmlTo(out, cmd);
-            historyIndex = history.length;
-            try {
-                const result = eval(cmd);
-                console.log('command result', result);
-            } finally {
-                el.value = '';
+        } else if (e.key === 'Enter') {
+            const cmd = el.value;
+            if (cmd) {
+                history.push(cmd);
+                historyIndex = history.length;
+                try {
+                    const result = eval(cmd);
+                    console.log('command result', result);
+                } finally {
+                    el.value = '';
+                }
             }
         }
+        out.innerHTML = highlightJs(el.value);
     };
-
+    el.placeholder = 'Enter UI.WEB command here';
     document.body.appendChild(div);
     div.appendChild(el);
     div.appendChild(out);
     return div;
-}
-
-function pushHtmlTo(out: HTMLElement, text: string) {
-    const html = highlightJs(text);
-    const el = document.createElement('div');
-    el.innerHTML = html;
-    out.appendChild(el);
 }
