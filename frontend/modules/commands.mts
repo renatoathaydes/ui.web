@@ -11,23 +11,18 @@ export function createCommandInput() {
     el.type = 'text';
     el.size = 50;
     el.onkeyup = (e) => {
-        console.log(`Key: ${e.key}`);
-        if (e.metaKey) {
-            console.log('meta key');
-        }
-        if (e.ctrlKey) {
-            console.log('ctrl key');
-        }
         if (e.key === 'ArrowUp') {
-            historyIndex = Math.max(0, historyIndex);
+            historyIndex = Math.max(0, historyIndex - 1);
             if (historyIndex < history.length) {
                 el.value = history[historyIndex];
             }
         }
         if (e.key === 'ArrowDown') {
-            historyIndex = Math.min(history.length - 1, historyIndex + 1);
+            historyIndex = Math.min(history.length, historyIndex + 1);
             if (historyIndex < history.length) {
                 el.value = history[historyIndex];
+            } else {
+                el.value = '';
             }
         }
     };
