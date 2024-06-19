@@ -3,9 +3,13 @@ import serveStatic from 'serve-static';
 import finalHandler from 'finalhandler';
 import { WsServer } from './ws.mjs';
 import { buildFrontend } from './builder.mjs';
+import { run } from './modules/files.mjs';
 
 async function main() {
-    const stopWatcher = await buildFrontend();
+    // TODO remove this, but make sure the files.mjs runs!
+    run();
+    
+    const stopFeWatcher = await buildFrontend();
 
     const serveFile = serveStatic('../frontend/assets', { index: ['index.html'] });
 
@@ -16,8 +20,8 @@ async function main() {
     const ws = new WsServer();
 
     server.on('upgrade', (req, socket, head) => ws.handleUpgrade(req, socket, head));
-    server.on('close', stopWatcher);
-    server.listen();
+    server.on('close', stopFeWatcher);
+    server.listen(8001);
     console.log(`Server running at http://localhost:${server.address().port}/`);
 }
 

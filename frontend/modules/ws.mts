@@ -1,4 +1,5 @@
-import { WsMessage, BackendCall } from "../../common/ws.mts";
+import { WsMessage } from "../../common/ws.mts";
+import { MethodCall, methodCallType } from '../../common/rpc.mjs';
 
 type Resolver = {
     resolve: (result: any) => void;
@@ -33,11 +34,11 @@ ws.onmessage = (event) => {
     }
 };
 
-export function callBackend(message: BackendCall): Promise<any> {
-    return send(message, true);
+export function callBackend(message: MethodCall): Promise<any> {
+    return send(message, true, methodCallType);
 }
 
-function send(message: any, needsAnswer: boolean = false): Promise<any> {
+function send(message: any, needsAnswer: boolean = false, type?: string): Promise<any> {
     const mid = needsAnswer ? id++ : -1;
     let answer: Promise<any>;
     if (needsAnswer) {
@@ -51,7 +52,7 @@ function send(message: any, needsAnswer: boolean = false): Promise<any> {
         answer = Promise.resolve();
     }
     try {
-        ws.send(JSON.stringify({ ok: true, id: mid, data: message } as WsMessage));
+        ws.send(JSON.stringify({ type, ok: true, id: mid, data: message } as WsMessage));
     } catch (e) {
         responses.delete(mid);
         throw e;

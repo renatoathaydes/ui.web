@@ -1,6 +1,7 @@
 import http from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { WsMessage } from '../../common/ws.mjs';
+import { MethodCall, methodHandlers, methodCallType } from '../../common/rpc.mjs';
 import stream from "node:stream";
 
 export class WsServer {
@@ -14,12 +15,32 @@ export class WsServer {
 
             ws.on('message', (event) => {
                 console.log('received message %s', event);
+                let message: WsMessage;
                 try {
-                    const message = JSON.parse(event.toString()) as WsMessage;
-                    self.sendMessage(ws, message.id, `I received this: ${message.data}`);
+                    message = JSON.parse(event.toString()) as WsMessage;
                 } catch (e) {
                     console.warn(e);
-                    self.sendMessage(ws, -1, 'Server Error');
+                    self.sendMessage(ws, -1, 'Server Error', false);
+                    return;
+                }
+                try {
+                    let result: any, ok: boolean = false;
+                    if (message.type === methodCallType) {
+                        const rpcCall = message.data as MethodCall;
+                        const method = methodHandlers.get(rpcCall.name);
+                        if (method) {
+                            result = method(rpcCall.arg);
+                            ok = true;
+                        } else {
+                            result = 'Unknown method: ' + rpcCall.name;
+                        }
+                    } else {
+                        result = 'Unknown message type: ' + message.type;
+                    }    
+                    self.sendMessage(ws, message.id, result, ok);
+                } catch (e) {
+                    console.warn(e);
+                    self.sendMessage(ws, message.id, 'Server Error', false);
                 }
             });
             self.sendMessage(ws, -1, 'Confirming connection works');

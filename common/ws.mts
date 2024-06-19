@@ -1,10 +1,6 @@
-export type BackendCall = {
-    method: string,
-    args: any[],
-};
-
 export type WsMessage = {
-    'ok': boolean,
-    'id': number,
-    'data': any,
+    ok: boolean,
+    id: number,
+    data: any,
+    type?: string,
 };
