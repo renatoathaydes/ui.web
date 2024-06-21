@@ -1,6 +1,7 @@
 {
   "version": "1.0",
   "dependencies": {
-    "highlight.js": "^11.9.0"
+    "highlight.js": "^11.9.0",
+    "json-rpc-protocol": "^0.13.2"
   }
 }

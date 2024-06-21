@@ -1,5 +1,5 @@
-import { WsMessage } from "../../common/ws.mts";
-import { MethodCall, methodCallType } from '../../common/rpc.mjs';
+import { WsMessage, WsMessageType } from "../../common/ws.mts";
+// import rpc from 'json-rpc-protocol';
 
 type Resolver = {
     resolve: (result: any) => void;
@@ -11,12 +11,17 @@ const ws = new WebSocket(new URL(`ws://${location.hostname}:${location.port}/ws`
 let id = 0;
 
 ws.onopen = () => {
-    send('Hello Server');
+    console.log('Websocket connection opened!');
+    send('Hello Server', false, 'rpc');
 };
 
 ws.onerror = (event) => {
     console.warn('WS error', event);
 }
+
+ws.onclose = (event) => {
+    console.warn('WS closed', event);
+};
 
 const responses = new Map<number, Resolver>();
 
@@ -34,11 +39,14 @@ ws.onmessage = (event) => {
     }
 };
 
-export function callBackend(message: MethodCall): Promise<any> {
-    return send(message, true, methodCallType);
+export function callBackend(message: any): Promise<any> {
+    return send(message, true, 'rpc');
 }
 
-function send(message: any, needsAnswer: boolean = false, type?: string): Promise<any> {
+function send(message: any, needsAnswer: boolean, type: WsMessageType): Promise<any> {
+    if (ws.readyState !== ws.OPEN) {
+        throw new Error('Cannot send message, websocket state: ' + ws.readyState);
+    }
     const mid = needsAnswer ? id++ : -1;
     let answer: Promise<any>;
     if (needsAnswer) {
@@ -51,8 +59,10 @@ function send(message: any, needsAnswer: boolean = false, type?: string): Promis
     } else {
         answer = Promise.resolve();
     }
+    const msg: WsMessage = { type, ok: true, id: mid, data: message };
+    console.log('Sending WsMessage: ' + JSON.stringify(msg));
     try {
-        ws.send(JSON.stringify({ type, ok: true, id: mid, data: message } as WsMessage));
+        ws.send(JSON.stringify(msg));
     } catch (e) {
         responses.delete(mid);
         throw e;

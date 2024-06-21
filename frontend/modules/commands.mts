@@ -7,8 +7,12 @@ export function createCommandInput() {
     const div = document.createElement('div');
     div.id = id;
     const el = document.createElement('input');
+    const codeView = document.createElement('div');
+    codeView.style.margin = '6px 4px';
+    codeView.style.minHeight = '1.1em';
     const out = document.createElement('div');
-    out.style.margin = '6px 4px';
+    out.style.height = '100px';
+    out.style.border = 'solid black 1px';
     el.type = 'text';
     el.size = 50;
     el.onkeyup = (e) => {
@@ -31,17 +35,39 @@ export function createCommandInput() {
                 historyIndex = history.length;
                 try {
                     const result = eval(cmd);
-                    console.log('command result', result);
+                    showOutput(out, result);
+                } catch (e) {
+                    showOutput(out, e, true);
                 } finally {
                     el.value = '';
                 }
             }
         }
-        out.innerHTML = highlightJs(el.value);
+        codeView.innerHTML = highlightJs(el.value);
     };
     el.placeholder = 'Enter UI.WEB command here';
     document.body.appendChild(div);
     div.appendChild(el);
+    div.appendChild(codeView);
     div.appendChild(out);
     return div;
 }
+
+function showOutput(out: HTMLDivElement, result: any, isError: boolean = false) {
+    const show = (value: any, error: boolean = false) => {
+        console.log('command result', value);
+        if (error) {
+            out.innerText = value.toString();
+            out.classList.add('error');
+        } else {
+            out.innerText = JSON.stringify(value);
+            out.classList.remove('error');
+        }
+    };
+    if (result instanceof Promise) {
+        result.catch(t => show(t, true)).then(show);
+    } else {
+        show(result, isError);
+    }
+}
+

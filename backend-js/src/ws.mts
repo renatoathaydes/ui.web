@@ -1,7 +1,9 @@
 import http from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
-import { WsMessage } from '../../common/ws.mjs';
-import { MethodCall, methodHandlers, methodCallType } from '../../common/rpc.mjs';
+import { WsMessage, WsMessageType } from '../../common/ws.mjs';
+import { invoke } from './rpc-client.mts';
+import rpc from 'json-rpc-protocol';
+
 import stream from "node:stream";
 
 export class WsServer {
@@ -25,18 +27,12 @@ export class WsServer {
                 }
                 try {
                     let result: any, ok: boolean = false;
-                    if (message.type === methodCallType) {
-                        const rpcCall = message.data as MethodCall;
-                        const method = methodHandlers.get(rpcCall.name);
-                        if (method) {
-                            result = method(rpcCall.arg);
-                            ok = true;
-                        } else {
-                            result = 'Unknown method: ' + rpcCall.name;
-                        }
+                    if (message.type === 'rpc') {
+                        result = invoke(message.data);
+                        ok = true;
                     } else {
                         result = 'Unknown message type: ' + message.type;
-                    }    
+                    }
                     self.sendMessage(ws, message.id, result, ok);
                 } catch (e) {
                     console.warn(e);
