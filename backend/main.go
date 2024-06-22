@@ -11,6 +11,7 @@ import (
 )
 
 func main() {
+	state := uiweb.State{}
 	wrkdir, err := filepath.Abs("../frontend")
 	if err != nil {
 		log.Fatal("Frontend.AbsolutePath", err)
@@ -39,7 +40,7 @@ func main() {
 	}
 
 	uiweb.CopyFile(path.Join(wrkdir, "assets", "index.html"), path.Join(feDist, "index.html"))
-	uiweb.StartServer(feDist)
+	uiweb.StartServer(feDist, &state)
 
 	// run the process forever
 	select {}

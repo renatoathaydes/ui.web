@@ -4,22 +4,16 @@
     "@types/finalhandler": "^1.2.3",
     "@types/node": "^20.14.2",
     "@types/serve-static": "^1.15.7",
-    "@types/ws": "^8.5.10",
+    "esbuild": "^0.21.5",
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "esbuild": "0.21.5",
     "finalhandler": "^1.2.0",
-    "json-rpc-peer": "^0.17.0",
-    "serve-static": "^1.15.0",
-    "watcher": "^2.3.1",
-    "ws": "^8.17.1"
+    "serve-static": "^1.15.0"
   },
   "scripts": {
-    "buildFE": "cd ../frontend && npm install",
-    "buildBE": "npx esbuild src/server.mts --bundle --external:'esbuild' --platform=node --sourcemap --target=node20 --outdir=out",
-    "build": "npm run buildFE && npm run buildBE",
-    "start": "node --enable-source-maps out/server.js",
-    "clean": "rm -rf out && rm -rf ../frontend/assets/out"
+    "build": "npx esbuild src/server.mts --bundle --platform=node --sourcemap --target=node20 --outdir=out",
+    "start": "node --enable-source-maps --watch out/server.js",
+    "clean": "rm -rf out/ .node_modules/"
   }
 }

@@ -1,28 +1,30 @@
 import http from 'http';
 import serveStatic from 'serve-static';
 import finalHandler from 'finalhandler';
-import { WsServer } from './ws.mjs';
-import { buildFrontend } from './builder.mjs';
-import { run } from './modules/files.mjs';
+import { runScript } from './index.mts';
+import { jsonFromRequest } from './request.mts';
 
 async function main() {
-    // TODO remove this, but make sure the files.mjs runs!
-    run();
-    
-    const stopFeWatcher = await buildFrontend();
+    const serveFile = serveStatic('./assets', { index: ['index.html'] });
 
-    const serveFile = serveStatic('../frontend/assets', { index: ['index.html'] });
-
-    const server = http.createServer((req, res) => {
-        serveFile(req, res, finalHandler(req, res));
+    const server = http.createServer(async (req, res) => {
+        const url = new URL(`http://${process.env.HOST ?? 'localhost'}${req.url ?? '/'}`);
+        if (req.method === 'POST' && url.pathname === '/command') {
+            try {
+                const json = await jsonFromRequest(req);
+                console.log(`Received POST: '${json}'`);
+                const result = await runScript(json);
+                res.end(JSON.stringify(result));
+            } catch (error) {
+                console.warn(error);
+                res.end(JSON.stringify({ error: error.toString() }));
+            }
+        } else {
+            serveFile(req, res, finalHandler(req, res));
+        }
     });
-
-    const ws = new WsServer();
-
-    server.on('upgrade', (req, socket, head) => ws.handleUpgrade(req, socket, head));
-    server.on('close', stopFeWatcher);
     server.listen(8001);
-    console.log(`Server running at http://localhost:${server.address().port}/`);
+    console.log(`JS backend running at http://localhost:${server.address().port}/`);
 }
 
 main();

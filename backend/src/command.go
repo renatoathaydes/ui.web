@@ -6,7 +6,7 @@ import (
 	"ui.web/server/src/backends"
 )
 
-func runCommand(cmd, lang string) (interface{}, error) {
+func runCommand(cmd, lang string) (*backends.CommandResponse, error) {
 	if lang == "js" {
 		v, e := backends.RunJsCommand(cmd)
 		return v, e

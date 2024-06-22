@@ -1,14 +1,20 @@
 package backends
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"strings"
 )
 
-func RunJsCommand(cmd string) (interface{}, error) {
+type CommandResponse struct {
+	Value interface{} `json:value`
+	Error *string     `json:error`
+}
+
+func RunJsCommand(cmd string) (*CommandResponse, error) {
 	cmdBody := strings.NewReader(cmd)
-	res, err := http.Post("http://localhost:8080/", "text/plain", cmdBody)
+	res, err := http.Post("http://localhost:8001/command", "text/plain", cmdBody)
 	if err != nil {
 		return nil, err
 	}
@@ -17,5 +23,13 @@ func RunJsCommand(cmd string) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	return string(body), nil
+
+	textBody := string(body)
+	response := CommandResponse{}
+	decoder := json.NewDecoder(strings.NewReader(textBody))
+	jsErr := decoder.Decode(&response)
+	if jsErr != nil {
+		return nil, jsErr
+	}
+	return &response, nil
 }

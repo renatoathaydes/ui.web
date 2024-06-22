@@ -21,27 +21,29 @@ func wsServer(ws *websocket.Conn) {
 			res.WriteJson(ws)
 			return
 		}
+		var res WsMessage
 		if msg.MsgType == "rpc" {
 			if cmd, ok := msg.Data.(string); ok {
 				value, verr := runCommand(cmd, "js")
 				if verr != nil {
-					res := msg.WsMessageResponse(fmt.Sprintf("%v", verr), false)
-					res.WriteJson(ws)
+					res = msg.WsMessageResponse(fmt.Sprintf("%v", verr), false)
+				} else if value.Error != nil {
+					res = msg.WsMessageResponse(value.Error, false)
 				} else {
-					res := msg.WsMessageResponse(value, true)
-					res.WriteJson(ws)
+					res = msg.WsMessageResponse(value.Value, true)
 				}
 			}
 		} else {
-			res := msg.WsMessageResponse(fmt.Sprintf("Go got data: %s", msg.Data), true)
-			res.WriteJson(ws)
+			res = msg.WsMessageResponse(fmt.Sprintf("Go got data: %s", msg.Data), true)
 		}
+		res.WriteJson(ws)
 	}
 }
 
 type server struct {
 	homePage  []byte
 	fsHandler http.Handler
+	state     *State
 }
 
 func (s server) serveFile(res http.ResponseWriter, req *http.Request) {
@@ -61,13 +63,14 @@ func readHomePage(dir string) []byte {
 	return res
 }
 
-func StartServer(path string) {
+func StartServer(path string, state *State) {
 	home := readHomePage(path)
 	mux := http.NewServeMux()
 
 	s := server{
 		fsHandler: http.FileServer(http.Dir(path)),
 		homePage:  home,
+		state:     state,
 	}
 
 	mux.Handle("/ws", websocket.Handler(wsServer))
