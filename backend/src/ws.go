@@ -24,6 +24,7 @@ func WsMessageFromJson(reader io.Reader) (WsMessage, error) {
 }
 
 func (msg WsMessage) WriteJson(writer io.Writer) {
+	fmt.Printf("Sending message: %+v\n", msg)
 	enc := json.NewEncoder(writer)
 	err :=  enc.Encode(msg)
 	if err != nil {
@@ -31,9 +32,9 @@ func (msg WsMessage) WriteJson(writer io.Writer) {
 	}
 }
 
-func (req WsMessage) WsMessageResponse(data interface{}) WsMessage {
+func (req WsMessage) WsMessageResponse(data interface{}, ok bool) WsMessage {
 	return WsMessage{
-		Ok: req.Ok,
+		Ok: ok,
 		Id: req.Id,
 		MsgType: "response",
 		Data: data,

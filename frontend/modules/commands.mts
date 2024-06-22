@@ -1,4 +1,7 @@
 import { highlightJs } from "./highlight.mts";
+import { callBackend } from "./ws.mts";
+
+type CommandMode = "FE-JS" | "BE-JS";
 
 const template = document.createElement('template');
 
@@ -23,7 +26,15 @@ template.innerHTML = `
     @import url( '/index.css' )
   </style>
   <div class="command-input">
-    <input type="text" size="50" placeholder="Enter UI.WEB command"></input>
+    <span>
+      <input type="text" size="50" placeholder="Enter UI.WEB command"></input>
+      <span class="command-mode">
+        <select class="mode" name="mode">
+          <option value="FE-JS">FE-JS</option>
+          <option value="BE-JS">BE-JS</option>
+        </select>
+      </span>
+    </span>
     <div class="small-label">code:</div>
     <div class="codeview"></div>
     <div class="small-label">output:</div>
@@ -38,10 +49,12 @@ class CommandInputElement extends HTMLElement {
     textInput!: HTMLInputElement
     codeView!: HTMLDivElement
     output!: HTMLDivElement
+    modeSelector!: HTMLSelectElement
+    mode: CommandMode = "FE-JS"
 
     constructor() {
         super();
-        console.log('Creating My Web Component');
+        console.log('Creating CommandInput Component');
         const shadow = this.attachShadow({ mode: "open" });
         shadow.appendChild(template.content.cloneNode(true));
         const mySheet = new CSSStyleSheet();
@@ -50,21 +63,27 @@ class CommandInputElement extends HTMLElement {
     }
 
     connectedCallback() {
-        console.log('Attaching My Web Component');
+        console.log('Attaching CommandInput Component');
         this.textInput = this.shadowRoot!.querySelector('input')!;
         this.codeView = this.shadowRoot!.querySelector('div.codeview')!;
         this.output = this.shadowRoot!.querySelector('div.output')!;
+        this.modeSelector = this.shadowRoot!.querySelector('select.mode')! as HTMLSelectElement;
+        this.modeSelector.onchange = this.onModeChange;
         this.textInput.onkeyup = this.onInputKeyup;
     }
 
     disconnectedCallback() {
-        console.log('Removing My Web Component');
+        console.log('Removing CommandInput Component');
+    }
+
+    onModeChange = () => {
+        this.mode = this.modeSelector.value as CommandMode;
+        console.log('CommandInput mode changed to', this.mode);
     }
 
     onInputKeyup = (e: KeyboardEvent) => {
         if (e.key === 'ArrowUp') {
             this.historyIndex = Math.max(0, this.historyIndex - 1);
-            console.log('historyIndex:', this.historyIndex, 'history.length', this.history.length);
             if (this.historyIndex < this.history.length) {
                 this.textInput.value = this.history[this.historyIndex];
             }
@@ -82,7 +101,7 @@ class CommandInputElement extends HTMLElement {
                 this.historyIndex = this.history.length;
                 this.codeView.innerHTML = highlightJs(cmd);
                 try {
-                    const result = eval(cmd);
+                    const result = this.runCommand(cmd);
                     showOutput(this.output, result);
                 } catch (e) {
                     showOutput(this.output, e, true);
@@ -92,25 +111,31 @@ class CommandInputElement extends HTMLElement {
             }
         }
     }
+
+    runCommand(cmd: string): any {
+        switch (this.mode) {
+            case "BE-JS":
+                return callBackend(cmd);
+            case "FE-JS":
+                return eval(cmd);
+        }
+    }
 }
 
 window.customElements.define('command-input', CommandInputElement);
 
-function showOutput(out: HTMLDivElement, result: any, isError: boolean = false) {
-    const show = (value: any, error: boolean = false) => {
+async function showOutput(out: HTMLDivElement, result: any, isError: boolean = false) {
+    if (isError) {
+        out.innerText = result?.toString() ?? 'ERROR';
+        out.classList.add('error');
+    } else try {
+        const value = await result;
         console.log('command result', value);
-        if (error) {
-            out.innerText = value.toString();
-            out.classList.add('error');
-        } else {
-            out.innerText = JSON.stringify(value);
-            out.classList.remove('error');
-        }
-    };
-    if (result instanceof Promise) {
-        result.catch(t => show(t, true)).then(show);
-    } else {
-        show(result, isError);
+        out.innerText = JSON.stringify(value);
+        out.classList.remove('error');
+    } catch (e) {
+        out.innerText = e.toString();
+        out.classList.add('error');
     }
 }
 

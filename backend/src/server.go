@@ -17,12 +17,25 @@ func wsServer(ws *websocket.Conn) {
 	for {
 		msg, err := WsMessageFromJson(ws)
 		if err != nil {
-			res := msg.WsMessageResponse(err)
+			res := msg.WsMessageResponse(err, false)
 			res.WriteJson(ws)
 			return
 		}
-		res := msg.WsMessageResponse(fmt.Sprintf("Go got data: %s", msg.Data))
-		res.WriteJson(ws)
+		if msg.MsgType == "rpc" {
+			if cmd, ok := msg.Data.(string); ok {
+				value, verr := runCommand(cmd, "js")
+				if verr != nil {
+					res := msg.WsMessageResponse(fmt.Sprintf("%v", verr), false)
+					res.WriteJson(ws)
+				} else {
+					res := msg.WsMessageResponse(value, true)
+					res.WriteJson(ws)
+				}
+			}
+		} else {
+			res := msg.WsMessageResponse(fmt.Sprintf("Go got data: %s", msg.Data), true)
+			res.WriteJson(ws)
+		}
 	}
 }
 

@@ -39,7 +39,7 @@ ws.onmessage = (event) => {
     }
 };
 
-export function callBackend(message: any): Promise<any> {
+export function callBackend(message: string): Promise<any> {
     return send(message, true, 'rpc');
 }
 
