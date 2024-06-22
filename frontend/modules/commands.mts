@@ -1,57 +1,100 @@
 import { highlightJs } from "./highlight.mts";
 
-export function createCommandInput() {
-    const id = `cmd-input-${Date.now()}`;
-    const history = [] as string[];
-    let historyIndex = 0;
-    const div = document.createElement('div');
-    div.id = id;
-    const el = document.createElement('input');
-    const codeView = document.createElement('div');
-    codeView.style.margin = '6px 4px';
-    codeView.style.minHeight = '1.1em';
-    const out = document.createElement('div');
-    out.style.height = '100px';
-    out.style.border = 'solid black 1px';
-    el.type = 'text';
-    el.size = 50;
-    el.onkeyup = (e) => {
+const template = document.createElement('template');
+
+const css = `
+  .command-input {
+    margin: 5px;
+  }
+  .codeview {
+    min-height: 1.1em;
+    border: solid gray 1px;
+    padding: 3px;
+  }
+  .output {
+    height: 100px;
+    border: solid darkgray 1px;
+    padding: 3px;
+  }
+`;
+
+template.innerHTML = `
+  <style>
+    @import url( '/index.css' )
+  </style>
+  <div class="command-input">
+    <input type="text" size="50" placeholder="Enter UI.WEB command"></input>
+    <div class="small-label">code:</div>
+    <div class="codeview"></div>
+    <div class="small-label">output:</div>
+    <div class="output" height="100px"></div>
+  </div>
+`;
+
+class CommandInputElement extends HTMLElement {
+
+    history: Array<string> = [];
+    historyIndex = 0;
+    textInput!: HTMLInputElement
+    codeView!: HTMLDivElement
+    output!: HTMLDivElement
+
+    constructor() {
+        super();
+        console.log('Creating My Web Component');
+        const shadow = this.attachShadow({ mode: "open" });
+        shadow.appendChild(template.content.cloneNode(true));
+        const mySheet = new CSSStyleSheet();
+        mySheet.replaceSync(css);
+        shadow.adoptedStyleSheets = [mySheet];
+    }
+
+    connectedCallback() {
+        console.log('Attaching My Web Component');
+        this.textInput = this.shadowRoot!.querySelector('input')!;
+        this.codeView = this.shadowRoot!.querySelector('div.codeview')!;
+        this.output = this.shadowRoot!.querySelector('div.output')!;
+        this.textInput.onkeyup = this.onInputKeyup;
+    }
+
+    disconnectedCallback() {
+        console.log('Removing My Web Component');
+    }
+
+    onInputKeyup = (e: KeyboardEvent) => {
         if (e.key === 'ArrowUp') {
-            historyIndex = Math.max(0, historyIndex - 1);
-            if (historyIndex < history.length) {
-                el.value = history[historyIndex];
+            this.historyIndex = Math.max(0, this.historyIndex - 1);
+            console.log('historyIndex:', this.historyIndex, 'history.length', this.history.length);
+            if (this.historyIndex < this.history.length) {
+                this.textInput.value = this.history[this.historyIndex];
             }
         } else if (e.key === 'ArrowDown') {
-            historyIndex = Math.min(history.length, historyIndex + 1);
-            if (historyIndex < history.length) {
-                el.value = history[historyIndex];
+            this.historyIndex = Math.min(this.history.length, this.historyIndex + 1);
+            if (this.historyIndex < this.history.length) {
+                this.textInput.value = this.history[this.historyIndex];
             } else {
-                el.value = '';
+                this.textInput.value = '';
             }
         } else if (e.key === 'Enter') {
-            const cmd = el.value;
+            const cmd = this.textInput.value;
             if (cmd) {
-                history.push(cmd);
-                historyIndex = history.length;
+                this.history.push(cmd);
+                this.historyIndex = this.history.length;
+                this.codeView.innerHTML = highlightJs(cmd);
                 try {
                     const result = eval(cmd);
-                    showOutput(out, result);
+                    showOutput(this.output, result);
                 } catch (e) {
-                    showOutput(out, e, true);
+                    showOutput(this.output, e, true);
                 } finally {
-                    el.value = '';
+                    this.textInput.value = '';
                 }
             }
         }
-        codeView.innerHTML = highlightJs(el.value);
-    };
-    el.placeholder = 'Enter UI.WEB command here';
-    document.body.appendChild(div);
-    div.appendChild(el);
-    div.appendChild(codeView);
-    div.appendChild(out);
-    return div;
+    }
 }
+
+window.customElements.define('command-input', CommandInputElement);
 
 function showOutput(out: HTMLDivElement, result: any, isError: boolean = false) {
     const show = (value: any, error: boolean = false) => {
@@ -71,3 +114,7 @@ function showOutput(out: HTMLDivElement, result: any, isError: boolean = false) 
     }
 }
 
+export function createCommandInput() {
+    const component = document.createElement('command-input');
+    document.body.appendChild(component);
+}

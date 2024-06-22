@@ -1,3 +1,13 @@
+:root {
+    --error-color: red;
+    --minor-color: gray;
+  }
+  
 .error {
-    color: red;
+    color: var(--error-color);
+}
+
+.small-label {
+    font-size: small;
+    color: var(--minor-color);
 }
