@@ -9,9 +9,21 @@ export async function runScript(js: string): Promise<CommandResponse> {
     try {
         const value = await eval(js);
         console.log(`Success: ${value}`);
-        return { value };
+        return asCommandResponse(value);
     } catch (e) {
         console.warn(e);
         return { error: e.toString() };
     }
+}
+
+function asCommandResponse(value: any): CommandResponse {
+    if (typeof value === 'object') {
+        if ("error" in value) {
+            return value as CommandResponse;
+        }
+        if ("value" in value) {
+            return value as CommandResponse;
+        }
+    }
+    return { value };
 }

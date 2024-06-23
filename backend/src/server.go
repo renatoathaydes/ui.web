@@ -24,13 +24,13 @@ func wsServer(ws *websocket.Conn) {
 		var res WsMessage
 		if msg.MsgType == "rpc" {
 			if cmd, ok := msg.Data.(string); ok {
-				value, verr := runCommand(cmd, "js")
+				result, verr := runCommand(cmd, "js")
 				if verr != nil {
 					res = msg.WsMessageResponse(fmt.Sprintf("%v", verr), false)
-				} else if value.Error != nil {
-					res = msg.WsMessageResponse(value.Error, false)
+				} else if result.Error != nil {
+					res = msg.WsMessageResponse(result.Error, false)
 				} else {
-					res = msg.WsMessageResponse(value.Value, true)
+					res = msg.WsMessageResponse(result, true)
 				}
 			}
 		} else {

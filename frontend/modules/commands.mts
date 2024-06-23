@@ -1,3 +1,4 @@
+import { CommandResponse } from "../../common/command.mts";
 import { highlightJs } from "./highlight.mts";
 import { callBackend } from "./ws.mts";
 
@@ -51,6 +52,7 @@ class CommandInputElement extends HTMLElement {
     output!: HTMLDivElement
     modeSelector!: HTMLSelectElement
     mode: CommandMode = "FE-JS"
+    verbose: boolean = false
 
     constructor() {
         super();
@@ -81,7 +83,7 @@ class CommandInputElement extends HTMLElement {
         console.log('CommandInput mode changed to', this.mode);
     }
 
-    onInputKeyup = (e: KeyboardEvent) => {
+    onInputKeyup = async (e: KeyboardEvent) => {
         if (e.key === 'ArrowUp') {
             this.historyIndex = Math.max(0, this.historyIndex - 1);
             if (this.historyIndex < this.history.length) {
@@ -101,10 +103,9 @@ class CommandInputElement extends HTMLElement {
                 this.historyIndex = this.history.length;
                 this.codeView.innerHTML = highlightJs(cmd);
                 try {
-                    const result = this.runCommand(cmd);
-                    showOutput(this.output, result);
+                    await this.runCommand(cmd);
                 } catch (e) {
-                    showOutput(this.output, e, true);
+                    this.showOutput(e, true);
                 } finally {
                     this.textInput.value = '';
                 }
@@ -112,34 +113,58 @@ class CommandInputElement extends HTMLElement {
         }
     }
 
-    runCommand(cmd: string): any {
+    async runCommand(cmd: string) {
         switch (this.mode) {
             case "BE-JS":
-                return callBackend(cmd);
+                const response = await callBackend(cmd);
+                return this.handleResponse(response);
             case "FE-JS":
-                return eval(cmd);
+                return this.showOutput(eval(cmd));
+        }
+    }
+
+    handleResponse(resp: CommandResponse) {
+        if ("error" in resp) {
+            this.showOutput(resp.error, true);
+        } else {
+            let value = resp.value;
+            this.showOutput(value);
+            if (resp.feCmd) {
+                evalFeCmd(resp.feCmd, value);
+            }
+        }
+    }
+
+    async showOutput(result: any, isError: boolean = false) {
+        if (isError) {
+            this.output.innerText = result?.toString() ?? 'ERROR';
+            this.output.classList.add('error');
+        } else try {
+            const value = await result;
+            if (this.verbose) {
+                console.log('command result', value);
+            }
+            this.output.innerText = JSON.stringify(value);
+            this.output.classList.remove('error');
+        } catch (e) {
+            this.output.innerText = e.toString();
+            this.output.classList.add('error');
         }
     }
 }
 
 window.customElements.define('command-input', CommandInputElement);
 
-async function showOutput(out: HTMLDivElement, result: any, isError: boolean = false) {
-    if (isError) {
-        out.innerText = result?.toString() ?? 'ERROR';
-        out.classList.add('error');
-    } else try {
-        const value = await result;
-        console.log('command result', value);
-        out.innerText = JSON.stringify(value);
-        out.classList.remove('error');
-    } catch (e) {
-        out.innerText = e.toString();
-        out.classList.add('error');
-    }
-}
-
 export function createCommandInput() {
     const component = document.createElement('command-input');
     document.body.appendChild(component);
+}
+
+function evalFeCmd(cmd: string, value: any) {
+    // value is not used directly but it's made visible in this scope for the cmd
+    try {
+        console.log('Backend command on frontend result', eval(cmd));
+    } catch (e) {
+        console.warn('Error running backend command on frontend', e);
+    }
 }

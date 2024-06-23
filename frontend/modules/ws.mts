@@ -1,3 +1,4 @@
+import { CommandResponse } from "../../common/command.mts";
 import { WsMessage, WsMessageType } from "../../common/ws.mts";
 // import rpc from 'json-rpc-protocol';
 
@@ -39,7 +40,7 @@ ws.onmessage = (event) => {
     }
 };
 
-export function callBackend(message: string): Promise<any> {
+export function callBackend(message: string): Promise<CommandResponse> {
     return send(message, true, 'rpc');
 }
 

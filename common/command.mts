@@ -1,5 +1,11 @@
-export type CommandResponse = {
+export type CommandResponseError = {
     error: string
-} | {
-    value: any
 }
+
+export type CommandResponseSuccess = {
+    value: any,
+    feCmd?: string,
+}
+
+export type CommandResponse =
+    CommandResponseSuccess | CommandResponseError

@@ -8,8 +8,9 @@ import (
 )
 
 type CommandResponse struct {
-	Value interface{} `json:value`
-	Error *string     `json:error`
+	Value interface{} `json:"value,omitempty"`
+	FeCmd string      `json:"feCmd,omitempty"`
+	Error *string     `json:"error,omitempty"`
 }
 
 func RunJsCommand(cmd string) (*CommandResponse, error) {
