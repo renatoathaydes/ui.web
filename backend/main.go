@@ -22,14 +22,17 @@ func main() {
 	if err != nil {
 		log.Fatal("Unable to create frontend folder", err)
 	}
-
 	ctx, ctxErr := esbuild.Context(esbuild.BuildOptions{
-		EntryPoints:   []string{"index.js"},
+		EntryPoints:   []string{"entrypoint.mts", "eval.mts"},
 		Bundle:        true,
 		Outdir:        path.Base(feDist),
 		Write:         true,
 		LogLevel:      esbuild.LogLevelError,
 		AbsWorkingDir: wrkdir,
+		TreeShaking: esbuild.TreeShakingFalse,
+		Format: esbuild.FormatESModule,
+		// all modules are included by the HTML and hence should not be embedded
+		External: []string{"./modules/*"},
 	})
 	if ctxErr != nil {
 		log.Fatal("esbuild.Context", ctxErr)

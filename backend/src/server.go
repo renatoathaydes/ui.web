@@ -33,6 +33,10 @@ func wsServer(ws *websocket.Conn) {
 					res = msg.WsMessageResponse(result, true)
 				}
 			}
+		} else if msg.MsgType == "notify" {
+			fmt.Printf("Received notification: %s", msg.Data)
+			// notify requires no response
+			continue
 		} else {
 			res = msg.WsMessageResponse(fmt.Sprintf("Go got data: %s", msg.Data), true)
 		}
