@@ -1,6 +1,8 @@
 package test
 
 import (
+	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -30,16 +32,36 @@ func TestBundler_EmptyDir(t *testing.T) {
 		"empty-modules/modules: no frontend modules (*.mjs, *.mts) found")
 }
 
+func TestBundler_CollectOneTsModule(t *testing.T) {
+	mods, err := src.CollectModules(path.Join("one-module", "modules"))
+	require.Nil(t, err)
+	require.Len(t, mods, 1)
+	require.Equal(t, "hi.mts", mods[0])
+}
+
 func TestBundler_OneTsModule(t *testing.T) {
+	t.Cleanup(func () {
+		_ = os.RemoveAll("one-module/modules/out")
+	})
 	ctxs, err := src.BundleModules("one-module", false)
 	require.Nil(t, err)
 	require.Len(t, ctxs, 1)
 	defer ctxs[0].Dispose()
 	res := ctxs[0].Rebuild()
-	assertOneOutput(t, res, "one-module/out/hi.js")
+	assertOneOutput(t, res, "one-module/modules/out/hi.js")
+}
+
+func TestBundler_CollectManyTsModules(t *testing.T) {
+	mods, err := src.CollectModules(path.Join("many-modules", "modules"))
+	require.Nil(t, err)
+	require.Len(t, mods, 3)
+	require.Contains(t, mods, "one.mts", "two.mjs", "three.mts")
 }
 
 func TestBundler_ManyModules(t *testing.T) {
+	t.Cleanup(func () {
+		_ = os.RemoveAll("many-modules/modules/out")
+	})
 	ctxs, err := src.BundleModules("many-modules", false)
 	require.Nil(t, err)
 	require.Len(t, ctxs, 3)
@@ -50,10 +72,13 @@ func TestBundler_ManyModules(t *testing.T) {
 	for _, ctx := range ctxs {
 		results = append(results, ctx.Rebuild())
 	}
+	require.Len(t, results[0].OutputFiles, 1)
+	require.Len(t, results[1].OutputFiles, 1)
+	require.Len(t, results[2].OutputFiles, 1)
 	slices.SortFunc(results, compareByFirstOutput)
-	assertOneOutput(t, results[0], "many-modules/out/one.js")
-	assertOneOutput(t, results[1], "many-modules/out/three.js")
-	assertOneOutput(t, results[2], "many-modules/out/two.js")
+	assertOneOutput(t, results[0], "many-modules/modules/out/one.js")
+	assertOneOutput(t, results[1], "many-modules/modules/out/three.js")
+	assertOneOutput(t, results[2], "many-modules/modules/out/two.js")
 
 	// this makes sure that we run esbuild correctly so that other files in modules/
 	// are not bundled into modules that import it.
@@ -74,6 +99,6 @@ func assertOneOutput(t *testing.T, res esbuild.BuildResult, path string) {
 
 func assertModuleImportsModuleTwo(t *testing.T, res esbuild.BuildResult) {
 	js := string(res.OutputFiles[0].Contents)
-	require.Contains(t, js, "/two.mjs")
+	require.Contains(t, js, "from \"./two.mjs\"")
 	require.NotContains(t, js, "Module two")
 }

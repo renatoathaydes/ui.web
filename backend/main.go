@@ -29,8 +29,8 @@ func main() {
 		Write:         true,
 		LogLevel:      esbuild.LogLevelError,
 		AbsWorkingDir: wrkdir,
-		TreeShaking: esbuild.TreeShakingFalse,
-		Format: esbuild.FormatESModule,
+		TreeShaking:   esbuild.TreeShakingFalse,
+		Format:        esbuild.FormatESModule,
 		// all modules are included by the HTML and hence should not be embedded
 		External: []string{"./modules/*"},
 	})

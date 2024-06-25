@@ -1,9 +1,12 @@
 module ui.web/server
 
-go 1.18
+go 1.21
+
+toolchain go1.22.4
 
 require (
 	github.com/evanw/esbuild v0.21.5
+	github.com/hashicorp/go-set/v2 v2.1.0
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/net v0.26.0
 )
