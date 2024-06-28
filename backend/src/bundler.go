@@ -3,6 +3,7 @@ package src
 import (
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -20,14 +21,27 @@ type buildContextResult struct {
 	ctx  esbuild.BuildContext
 }
 
-const modulesDir = "./modules"
+const ModulesDir = "./modules"
 
-func BundleModules(wrkdir string, write bool) ([]esbuild.BuildContext, error) {
-	modsDir := path.Join(wrkdir, modulesDir)
+// Bundle modules found in the given wrkdir.
+//
+// Only write out the files if write is true.
+func Bundle(wrkdir, commonDir string, write bool) ([]esbuild.BuildContext, error) {
+	modsDir := path.Join(wrkdir, ModulesDir)
 	mods, err := CollectModules(modsDir)
 	if err != nil {
 		return nil, fmt.Errorf("problem collecting modules in directory %s: %v", modsDir, err)
 	}
+	return BundleModules(wrkdir, commonDir, mods, write)
+}
+
+// Bundle the given modules.
+//
+// Assumes that mods contains modules in `wrkdir/modules/`.
+// Only write out the files if write is true.
+func BundleModules(wrkdir, commonDir string, mods []string, write bool) ([]esbuild.BuildContext, error) {
+	log.Printf("Building %d module(s).\n", len(mods))
+	modsDir := path.Join(wrkdir, ModulesDir)
 	out := path.Join(modsDir, "out")
 	_ = os.RemoveAll(out)
 	mkDirErr := os.MkdirAll(out, os.ModePerm)
@@ -40,7 +54,12 @@ func BundleModules(wrkdir string, write bool) ([]esbuild.BuildContext, error) {
 		return nil, fmt.Errorf("cannot get absolute path modules in directory %s: %v", modsDir, err)
 	}
 
-	plugins := makePlugins(mods)
+	commonMods, err := CollectModules(commonDir)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read common modules: %v", err)
+	}
+
+	plugins := makePlugins(mods, commonMods)
 
 	results := make(chan buildContextResult, len(mods))
 	var wg sync.WaitGroup
@@ -83,10 +102,10 @@ func errorIn(results []buildContextResult) error {
 
 func bundleModule(mod, wrkdir string, plugin esbuild.Plugin, write bool) buildContextResult {
 	ctx, err := esbuild.Context(esbuild.BuildOptions{
-		EntryPoints:   []string{path.Join(modulesDir, mod)},
+		EntryPoints:   []string{path.Join(ModulesDir, mod)},
 		Bundle:        true,
-		Outdir:        path.Join(modulesDir, "out"),
-		Outbase:       modulesDir,
+		Outdir:        path.Join(ModulesDir, "out"),
+		Outbase:       ModulesDir,
 		Write:         write,
 		LogLevel:      esbuild.LogLevelError,
 		AbsWorkingDir: wrkdir,
@@ -117,37 +136,40 @@ func CollectModules(dir string) ([]string, error) {
 	return result, nil
 }
 
-func makeModuleSet(mods []string) (*set.Set[string], []string) {
-	res := set.New[string](len(mods))
-	arr := make([]string, len(mods))
+func makeModuleSet(mods, commonMods []string) (externalMods *set.Set[string], modPaths []string) {
+	externalMods = set.New[string](len(mods) + len(commonMods))
+	modPaths = make([]string, len(mods))
 	for i, mod := range mods {
-		res.Insert(fmt.Sprintf("./%s", mod))
-		arr[i] = fmt.Sprintf("%s/%s", modulesDir, mod)
+		externalMods.Insert(fmt.Sprintf("./%s", mod))
+		modPaths[i] = fmt.Sprintf("%s/%s", ModulesDir, mod)
 	}
-	return res, arr
+	for _, mod := range commonMods {
+		externalMods.Insert(fmt.Sprintf("../../common/%s", mod))
+	}
+	return
 }
 
-func makePlugins(mods []string) []esbuild.Plugin {
-	modsSet, modPaths := makeModuleSet(mods)
+func makePlugins(mods, commonMods []string) []esbuild.Plugin {
+	externalMods, modPaths := makeModuleSet(mods, commonMods)
 	var res []esbuild.Plugin
 	for i := range mods {
-		res = append(res, makePlugin(modPaths[i], modsSet))
+		res = append(res, makePlugin(modPaths[i], externalMods))
 	}
 	return res
 }
 
-func makePlugin(mod string, modsSet *set.Set[string]) esbuild.Plugin {
+func makePlugin(mod string, externalMods *set.Set[string]) esbuild.Plugin {
 	return esbuild.Plugin{
 		Name: "fix_imports",
 		Setup: func(build esbuild.PluginBuild) {
 			// modules at the root dir are marked external and their import paths are "fixed"
 			// so that they don't include "modules/..."
-			build.OnResolve(esbuild.OnResolveOptions{Filter: `^./`},
+			build.OnResolve(esbuild.OnResolveOptions{Filter: `^(./|../)`},
 				func(args esbuild.OnResolveArgs) (esbuild.OnResolveResult, error) {
-					external := !strings.HasSuffix(args.Path, mod) && modsSet.Contains(args.Path)
+					external := !strings.HasSuffix(args.Path, mod) && externalMods.Contains(args.Path)
 					if external {
 						return esbuild.OnResolveResult{
-							Path:     args.Path,
+							Path:     ChangExtension(args.Path, ".js"),
 							External: true,
 						}, nil
 					}

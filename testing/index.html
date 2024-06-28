@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeMirror in 30</title>
+</head>
+
+<body>
+    <script src="out/ev.js" type="module"></script>
+    <script src="out/index.js" type="module"></script>
+    <script type="module">
+        import { setValue, callme } from './out/index.js';
+        setValue('2+2');
+        console.log(callme());
+    </script>
+</body>
+
+</html>

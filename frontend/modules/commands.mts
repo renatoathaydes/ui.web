@@ -1,5 +1,4 @@
 import { CommandResponse } from "../../common/command.mts";
-import { highlightJs } from "./highlight.mts";
 import { callBackend } from "./ws.mts";
 
 type CommandMode = "FE-JS" | "BE-JS";
@@ -24,7 +23,7 @@ const css = `
 
 template.innerHTML = `
   <style>
-    @import url( '/index.css' )
+    @import url( '/startup.css' )
   </style>
   <div class="command-input">
     <span>
@@ -101,7 +100,8 @@ class CommandInputElement extends HTMLElement {
             if (cmd) {
                 this.history.push(cmd);
                 this.historyIndex = this.history.length;
-                this.codeView.innerHTML = highlightJs(cmd);
+                // TODO show code in a read-only editor?
+                this.codeView.innerHTML = cmd;
                 try {
                     await this.runCommand(cmd);
                 } catch (e) {
@@ -117,20 +117,21 @@ class CommandInputElement extends HTMLElement {
         switch (this.mode) {
             case "BE-JS":
                 const response = await callBackend(cmd);
-                return this.handleResponse(response);
+                return this.handleBeResponse(response);
             case "FE-JS":
-                return this.showOutput(eval(cmd));
+                // indirect eval exposing this as self
+                return this.showOutput(this.eval(cmd));
         }
     }
 
-    handleResponse(resp: CommandResponse) {
+    handleBeResponse(resp: CommandResponse) {
         if ("error" in resp) {
             this.showOutput(resp.error, true);
         } else {
             let value = resp.value;
             this.showOutput(value);
             if (resp.feCmd) {
-                evalFeCmd(resp.feCmd, value);
+                this.eval(resp.feCmd, value);
             }
         }
     }
@@ -151,6 +152,12 @@ class CommandInputElement extends HTMLElement {
             this.output.classList.add('error');
         }
     }
+
+    /// Eval the given cmd in the global scope, but expose this component
+    /// as the "me" variable.
+    async eval(cmd: string, value?: any): Promise<any> {
+        return evalWith(cmd, this, value);
+    }
 }
 
 window.customElements.define('command-input', CommandInputElement);
@@ -158,13 +165,4 @@ window.customElements.define('command-input', CommandInputElement);
 export function createCommandInput() {
     const component = document.createElement('command-input');
     document.body.appendChild(component);
-}
-
-function evalFeCmd(cmd: string, value: any) {
-    // value is not used directly but it's made visible in this scope for the cmd
-    try {
-        console.log('Backend command on frontend result', eval(cmd));
-    } catch (e) {
-        console.warn('Error running backend command on frontend', e);
-    }
 }

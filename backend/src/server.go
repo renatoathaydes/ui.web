@@ -62,17 +62,18 @@ func (s server) serveFile(res http.ResponseWriter, req *http.Request) {
 func readHomePage(dir string) []byte {
 	res, err := os.ReadFile(path.Join(dir, "index.html"))
 	if err != nil {
-		log.Fatal("Could not read index.html in dir:", dir)
+		log.Fatal("Could not read index.html in dir: ", dir)
 	}
 	return res
 }
 
-func StartServer(path string, state *State) {
-	home := readHomePage(path)
+func StartServer(frontendDir string, state *State) {
+	modsDir := path.Join(frontendDir, ModulesDir, "out")
+	home := readHomePage(modsDir)
 	mux := http.NewServeMux()
 
 	s := server{
-		fsHandler: http.FileServer(http.Dir(path)),
+		fsHandler: http.FileServer(http.Dir(modsDir)),
 		homePage:  home,
 		state:     state,
 	}

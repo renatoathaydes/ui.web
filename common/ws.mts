@@ -5,4 +5,4 @@ export type WsMessage = {
     type: WsMessageType,
 };
 
-export type WsMessageType = 'rpc' | 'response';
+export type WsMessageType = 'rpc' | 'response' | 'notify';

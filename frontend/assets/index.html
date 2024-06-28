@@ -4,9 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UI.WEB</title>
-    <script src="/index.js" type="module"></script>
-    <link rel="stylesheet" href="/index.css">
+    <script src="/eval.js" type="module"></script>
+    <script src="/startup.js" type="module"></script>
+    <link rel="stylesheet" href="/startup.css">
 </head>
 <body>
+    <script type="module">
+        import { startup } from './startup.js'
+        startup()
+    </script>
 </body>
 </html>

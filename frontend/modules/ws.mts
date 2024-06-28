@@ -1,6 +1,5 @@
 import { CommandResponse } from "../../common/command.mts";
 import { WsMessage, WsMessageType } from "../../common/ws.mts";
-// import rpc from 'json-rpc-protocol';
 
 type Resolver = {
     resolve: (result: any) => void;
@@ -13,7 +12,7 @@ let id = 0;
 
 ws.onopen = () => {
     console.log('Websocket connection opened!');
-    send('Hello Server', false, 'rpc');
+    send('Hello Server', false, 'notify');
 };
 
 ws.onerror = (event) => {
