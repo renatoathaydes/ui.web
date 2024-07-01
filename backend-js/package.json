@@ -1,5 +1,7 @@
 {
   "version": "1.0",
+  "module": "ui.web.backend-js",
+  "type": "module",
   "devDependencies": {
     "@types/finalhandler": "^1.2.3",
     "@types/node": "^20.14.2",
@@ -12,8 +14,8 @@
     "serve-static": "^1.15.0"
   },
   "scripts": {
-    "build": "npx esbuild src/server.mts --bundle --platform=node --sourcemap --target=node20 --outdir=out",
-    "start": "node --enable-source-maps --watch out/server.js",
-    "clean": "rm -rf out/ .node_modules/"
+    "build": "npx esbuild modules/startup.mts --bundle --platform=node --target=node20 --outdir=out",
+    "start": "node modules/out/startup.js",
+    "clean": "rm -rf ./modules/out/ .node_modules/"
   }
 }

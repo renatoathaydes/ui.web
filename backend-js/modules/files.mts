@@ -1,4 +1,4 @@
-import { CommandResponse } from "../../../common/command.mts";
+import { CommandResponse } from "../../common/command.mts";
 import * as fs from 'node:fs/promises';
 
 export async function openFile(name: string): Promise<CommandResponse> {

@@ -28,7 +28,7 @@ func TestEvalJsTemplate(t *testing.T) {
 	var buffer bytes.Buffer
 	writer := bufio.NewWriter(&buffer)
 
-	err := uiweb.WriteEvalJsWith(writer, mods)
+	err := uiweb.WriteEvalJsWith(writer, mods, true)
 
 	require.Nil(t, err)
 	err = writer.Flush()

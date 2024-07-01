@@ -1,7 +1,7 @@
 package src
 
 import (
-	"log"
+	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
@@ -9,6 +9,10 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 )
+
+type HasLogger interface {
+	Log() *slog.Logger
+}
 
 // / CopyFile copies input to output, panics on error.
 func CopyFile(input, output string) error {
@@ -60,7 +64,8 @@ func ChangExtension(file, newExt string) string {
 // If the function returns true, the watcher continues, otherwise
 // it will abort.
 // This function returns immediately as the watcher runs async.
-func WatchAsync[T any](dir string, ctx T, trigger func(T) bool, onExit func()) error {
+func WatchAsync[T HasLogger](dir string, ctx T, trigger func(T) bool, onExit func()) error {
+	logger := ctx.Log()
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return err
@@ -78,7 +83,7 @@ func WatchAsync[T any](dir string, ctx T, trigger func(T) bool, onExit func()) e
 				// ignore as per docs, not useful:
 				// https://github.com/fsnotify/fsnotify?tab=readme-ov-file#faq
 				if !event.Has(fsnotify.Chmod) && isAtDir(event.Name, dir) {
-					log.Printf("File system change detected: %s\n", event)
+					logger.Debug("File system change detected", "path", event.Name, "op", event.Op.String())
 					keepGoing := trigger(ctx)
 					if !keepGoing {
 						break loop
@@ -88,7 +93,7 @@ func WatchAsync[T any](dir string, ctx T, trigger func(T) bool, onExit func()) e
 				if !ok {
 					return
 				}
-				log.Println("error:", err)
+				logger.Warn("File watcher error", "error", err)
 			}
 		}
 		onExit()

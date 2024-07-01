@@ -1,41 +1,71 @@
 package src
 
 import (
-	"log"
+	"log/slog"
 	"path"
 )
 
-func Build(fe string) bool {
-	mods, err := CollectModules(path.Join(fe, ModulesDir))
+type BuildOptions struct {
+	Dir         string
+	ForFrontend bool
+	Logger      *slog.Logger
+}
+
+func (b BuildOptions) Log() *slog.Logger {
+	l := b.Logger
+	if l != nil {
+		return l
+	}
+	return slog.Default()
+}
+
+func Build(options BuildOptions) bool {
+	logger := options.Log()
+	dir := options.Dir
+	mods, err := CollectModules(path.Join(dir, ModulesDir))
 	if err != nil {
-		log.Printf("Bundler could not collect modules: %s\n", err.Error())
+		logger.Warn("Bundler could not collect modules", "error", err)
 		return true
 	}
-	commonDir := path.Join(fe, "..", "common")
-	ctxs, err := BundleModules(fe, commonDir, mods, true)
+	opts := BundleOptions{BuildOpts: &options, CommonDir: path.Join(dir, "..", "common")}
+	results, err := BundleModules(opts, mods, true)
 	if err != nil {
-		log.Printf("Bundler failed: %s\n", err.Error())
+		logger.Error("Bundler failed", "error", err)
 		return true
 	}
-	for _, ctx := range ctxs {
+	all_success := true
+	for _, res := range results {
 		// TODO keep ctx between runs and re-use existing ones (which should be most)
-		defer ctx.Dispose()
-		res := ctx.Rebuild()
-		if len(res.Errors) > 0 {
-			log.Println("Bundler finished with errors, please check the logs above.")
+		if res.IsError {
+			logger.Error("There was an error creating the context", "module", res.Name, "error", res.Err)
+			return false
 		}
+		ctx := *res.Ctx
+		defer ctx.Dispose()
+		build_res := ctx.Rebuild()
+		if len(build_res.Errors) > 0 {
+			logger.Error("Module was not bundled due to errors", "module", res.Name)
+			all_success = false
+		} else {
+			logger.Info("Module bundled successfully", "module", res.Name)
+		}
+	}
+	if all_success {
+		logger.Info("All modules bundled successfully.")
+	} else {
+		logger.Warn("Bundler finished with errors, please check the logs above.")
 	}
 
 	// TODO parse the template only once
-	err = WriteEvalJs(mods, path.Join(fe, ModulesDir, "out", "eval.js"))
+	err = WriteEvalJs(mods, path.Join(dir, ModulesDir, "out", "eval.js"), options.ForFrontend)
 	if err != nil {
-		log.Printf("Error writing eval.js: %s", err.Error())
+		logger.Warn("Error writing eval.js", "error", err)
 	}
 
-	err = CopyDir(path.Join(fe, "assets"),
-		path.Join(fe, ModulesDir, "out"))
+	err = CopyDir(path.Join(dir, "assets"),
+		path.Join(dir, ModulesDir, "out"))
 	if err != nil {
-		log.Fatal("Could not copy assets", err)
+		logger.Warn("Could not copy assets", "error", err)
 	}
 
 	return true

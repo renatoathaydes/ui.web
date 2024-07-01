@@ -1,10 +1,11 @@
 import http from 'http';
 import serveStatic from 'serve-static';
 import finalHandler from 'finalhandler';
-import { runScript } from './index.mts';
+import { BackendCommandRunner } from './command.mts';
 import { jsonFromRequest } from './request.mts';
 
-async function main() {
+export async function start() {
+    const runner = new BackendCommandRunner;
     const serveFile = serveStatic('./assets', { index: ['index.html'] });
 
     const server = http.createServer(async (req, res) => {
@@ -13,7 +14,7 @@ async function main() {
             try {
                 const json = await jsonFromRequest(req);
                 console.log(`Received POST: '${json}'`);
-                const result = await runScript(json);
+                const result = await runner.runScript(json);
                 res.end(JSON.stringify(result));
             } catch (error) {
                 console.warn(error);
@@ -26,5 +27,3 @@ async function main() {
     server.listen(8001);
     console.log(`JS backend running at http://localhost:${server.address().port}/`);
 }
-
-main();

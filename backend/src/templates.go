@@ -12,6 +12,7 @@ type ModuleEntry struct {
 }
 
 type TemplateContext struct {
+	ForFrontend bool
 	Mods []ModuleEntry
 }
 
@@ -25,29 +26,29 @@ async function evalWith(cmd, me, value) {
     return await eval(cmd);
 }
 
-window.evalWith = evalWith;
+{{ if .ForFrontend }}window{{ else }}global{{ end }}.evalWith = evalWith;
 `
 
-func WriteEvalJs(mods []string, outfile string) error {
+func WriteEvalJs(mods []string, outfile string, for_frontend bool) error {
 	writer, err := os.Create(outfile)
 	if err != nil {
 		return err
 	}
 	defer writer.Close()
-	return WriteEvalJsWith(writer, mods)
+	return WriteEvalJsWith(writer, mods, for_frontend)
 }
 
-func WriteEvalJsWith(writer io.Writer, mods []string) error {
+func WriteEvalJsWith(writer io.Writer, mods []string, for_frontend bool) error {
 	tpl := template.Must(template.New("eval.js").Parse(evalJs))
-	return tpl.Execute(writer, createContext(mods))
+	return tpl.Execute(writer, createContext(mods, for_frontend))
 }
 
-func createContext(mods []string) TemplateContext {
+func createContext(mods []string, for_frontend bool) TemplateContext {
 	var entries = make([]ModuleEntry, len(mods))
 	for i, mod := range mods {
 		n := ChangExtension(path.Base(mod), "")
 		p := ChangExtension(mod, ".js")
 		entries[i] = ModuleEntry{Name: n, Path: p}
 	}
-	return TemplateContext{Mods: entries}
+	return TemplateContext{ForFrontend: for_frontend, Mods: entries}
 }

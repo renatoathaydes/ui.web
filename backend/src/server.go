@@ -83,6 +83,8 @@ func StartServer(frontendDir string, state *State) {
 
 	fmt.Printf("Running at http://localhost:%d\n", 8000)
 
-	// does not return
-	_ = http.ListenAndServe(":8000", mux)
+	go func() {
+		// does not return
+		_ = http.ListenAndServe(":8000", mux)
+	}()
 }
