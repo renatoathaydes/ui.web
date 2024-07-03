@@ -8,12 +8,20 @@ import (
 
 func StartNode(modsDir string, logger *slog.Logger) {
 	cmd := exec.Command("node", "--watch", path.Join(modsDir, "out", "startup.js"))
-	node_logger := logger.WithGroup("node")
+
+	node_stdout := slog.New(logger.Handler().WithAttrs([]slog.Attr{
+		{Key: "proc", Value: slog.StringValue("node")},
+		{Key: "s", Value: slog.StringValue("stdout")},
+	}))
+	node_stderr := slog.New(logger.Handler().WithAttrs([]slog.Attr{
+		{Key: "proc", Value: slog.StringValue("node")},
+		{Key: "s", Value: slog.StringValue("stdout")},
+	}))
 	stdout := NewWriter(func(line string) {
-		node_logger.Info(line)
+		node_stdout.Info(line)
 	})
 	stderr := NewWriter(func(line string) {
-		node_logger.Warn(line)
+		node_stderr.Info(line)
 	})
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
