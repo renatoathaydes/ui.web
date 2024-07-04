@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"os/exec"
 	"path"
+	"time"
 )
 
 func StartNode(modsDir string, logger *slog.Logger) {
@@ -28,7 +29,9 @@ func StartNode(modsDir string, logger *slog.Logger) {
 
 	err := cmd.Start()
 	if err != nil {
-		logger.Error("backend-js node process could not be started", "error", err)
+		logger.Error("node process could not be started", "error", err)
+	} else {
+		logger.Debug("node process started")
 	}
 
 	go func() {
@@ -36,7 +39,11 @@ func StartNode(modsDir string, logger *slog.Logger) {
 		defer stderr.Close()
 		err := cmd.Wait()
 		if err != nil {
-			logger.Error("backend-js node process died", "error", err)
+			logger.Error("node process died, will restart in a few seconds", "error", err)
+			time.Sleep(2 * time.Second)
+			StartNode(modsDir, logger)
+		} else {
+			logger.Info("node process exited successfully.")
 		}
 	}()
 }

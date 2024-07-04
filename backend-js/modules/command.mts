@@ -7,10 +7,12 @@ export class BackendCommandRunner {
         console.log('Running js', js);
         try {
             const value = await evalWith(js, this);
-            console.log(`Success: ${value}`);
+            if (this.verbose) {
+                console.log(`Success: ${value}`);
+            }
             return this.asCommandResponse(value);
         } catch (e) {
-            console.warn(e);
+            console.log('Error running command:', e.toString);
             return { error: e.toString() };
         }
     }

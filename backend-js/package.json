@@ -10,12 +10,11 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "finalhandler": "^1.2.0",
     "serve-static": "^1.15.0"
   },
   "scripts": {
-    "build": "npx esbuild modules/startup.mts --bundle --platform=node --target=node20 --outdir=out",
-    "start": "node modules/out/startup.js",
+    "build": "npx esbuild modules/startup.mts --bundle --platform=node --target=node20 --format=esm --outdir=out",
+    "start": "node out/startup.js",
     "clean": "rm -rf ./modules/out/ .node_modules/"
   }
 }
