@@ -6,19 +6,21 @@ type CommandMode = "FE-JS" | "BE-JS";
 const template = document.createElement('template');
 
 const css = `
-  .command-input {
-    margin: 5px;
-  }
-  .codeview {
+.command-input {
+    padding: 5px;
+    border: solid lightgray 1px;
+}
+
+.codeview {
     min-height: 1.1em;
     border: solid gray 1px;
     padding: 3px;
-  }
-  .output {
+}
+.output {
     height: 100px;
     border: solid darkgray 1px;
     padding: 3px;
-  }
+}
 `;
 
 template.innerHTML = `
@@ -124,14 +126,14 @@ class CommandInputElement extends HTMLElement {
         }
     }
 
-    handleBeResponse(resp: CommandResponse) {
+    async handleBeResponse(resp: CommandResponse) {
         if ("error" in resp) {
             this.showOutput(resp.error, true);
         } else {
             let value = resp.value;
-            this.showOutput(value);
             if (resp.feCmd) {
-                this.eval(resp.feCmd, value);
+                const result = await this.eval(resp.feCmd, value);
+                this.showOutput(result);
             }
         }
     }

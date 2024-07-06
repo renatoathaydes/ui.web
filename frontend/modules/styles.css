@@ -11,3 +11,7 @@
     font-size: small;
     color: var(--minor-color);
 }
+
+div {
+    overflow: scroll;
+}
