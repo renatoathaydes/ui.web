@@ -3,6 +3,7 @@ package src
 import (
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"path"
@@ -67,7 +68,14 @@ func readHomePage(dir string) []byte {
 	return res
 }
 
-func StartServer(frontendDir string, state *State) {
+// StartServer starts the main backend server.
+//
+// The /ws route is where the frontend should connect to the websocket. All other routes
+// are served from the file system with a root at "<frontendDir>/modules/out".
+//
+// It returns a channel that sends the value `true` when the server stops, which only
+// happens if it crashes.
+func StartServer(frontendDir string, logger *slog.Logger, state *State) chan bool {
 	modsDir := path.Join(frontendDir, ModulesDir, "out")
 	home := readHomePage(modsDir)
 	mux := http.NewServeMux()
@@ -81,10 +89,16 @@ func StartServer(frontendDir string, state *State) {
 	mux.Handle("/ws", websocket.Handler(wsServer))
 	mux.HandleFunc("/", s.serveFile)
 
-	fmt.Printf("Running at http://localhost:%d\n", 8000)
+	// whether the process should be restarted
+	result := make(chan bool)
 
 	go func() {
-		// does not return
-		_ = http.ListenAndServe(":8000", mux)
+		logger.Info(fmt.Sprintf("Running at http://localhost:%d\n", 8000))
+		err := http.ListenAndServe(":8000", mux)
+		logger.Warn("Server crashed", "error", err)
+		result <- true
+		close(result)
 	}()
+
+	return result
 }
