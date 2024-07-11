@@ -3,8 +3,7 @@
   "module": "ui.web.backend-js",
   "type": "module",
   "devDependencies": {
-    "@types/finalhandler": "^1.2.3",
-    "@types/node": "^20.14.2",
+    "@types/node": "^20.14.10",
     "@types/serve-static": "^1.15.7",
     "esbuild": "^0.21.5",
     "typescript": "^5.4.5"
@@ -15,6 +14,7 @@
   "scripts": {
     "build": "npx esbuild modules/startup.mts --bundle --platform=node --target=node20 --format=esm --outdir=out",
     "start": "node out/startup.js",
+    "check": "npx tsc",
     "clean": "rm -rf ./modules/out/ .node_modules/"
   }
 }

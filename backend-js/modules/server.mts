@@ -21,7 +21,8 @@ export async function start() {
             res.end('Bad request\n');
         }
     });
-    server.listen(8001);
-    console.log(`JS backend running at http://localhost:${server.address().port}/`);
+    const port = 8001;
+    server.listen(port);
+    console.log(`JS backend running at http://localhost:${port}/`);
 }
 
