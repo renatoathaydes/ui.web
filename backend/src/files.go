@@ -1,11 +1,14 @@
 package src
 
 import (
+	"bytes"
+	"fmt"
 	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
+	"text/template"
 
 	"github.com/fsnotify/fsnotify"
 )
@@ -30,7 +33,36 @@ func CopyFile(input, output string) error {
 	return err
 }
 
-func CopyDir(source, destination string) error {
+func copyIndexHtml(logger *slog.Logger, input, output, dir string) error {
+	var data struct {
+		ImportMap string
+	}
+	b := make([]byte, 0, 1024)
+	w := bytes.NewBuffer(b)
+	err := GenerateImportMaps(logger, path.Join(dir, "node_modules"), w)
+	if err != nil {
+		return fmt.Errorf("error generating importmaps: %s", err)
+	}
+	logger.Debug("Generated importmap from node_modules", "dir", dir)
+	data.ImportMap = w.String()
+	tmpl, err := template.New("index.html").ParseFiles(input)
+	if err != nil {
+		return fmt.Errorf("could not parse index.html template: %s", err)
+	}
+	writer, err := os.OpenFile(output, os.O_WRONLY|os.O_CREATE, os.ModePerm)
+	if err != nil {
+		return fmt.Errorf("could not open template output file: %s", err)
+	}
+	defer writer.Close()
+	err = tmpl.Execute(writer, &data)
+	if err != nil {
+		return fmt.Errorf("could not write parsed index.html template: %s", err)
+	}
+	return nil
+}
+
+func CopyAssetsDir(logger *slog.Logger, dir, destination string) error {
+	source := path.Join(dir, "assets")
 	var err error = filepath.Walk(source, func(p string, info os.FileInfo, err error) error {
 		var relPath string = strings.Replace(p, source, "", 1)
 		if relPath == "" {
@@ -39,7 +71,13 @@ func CopyDir(source, destination string) error {
 		if info.IsDir() {
 			return os.Mkdir(filepath.Join(destination, relPath), os.ModePerm)
 		} else if info.Mode().IsRegular() {
-			err := CopyFile(filepath.Join(source, relPath), filepath.Join(destination, relPath))
+			var err error
+			if relPath == "/index.html" {
+				err = copyIndexHtml(logger, p, filepath.Join(destination, relPath), dir)
+			} else {
+				logger.Debug("Copying file", "from", relPath, "to", destination)
+				err = CopyFile(p, filepath.Join(destination, relPath))
+			}
 			if err != nil {
 				return err
 			}

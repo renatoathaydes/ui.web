@@ -5,8 +5,8 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
-	"os"
 	"path"
+	"strings"
 
 	"golang.org/x/net/websocket"
 )
@@ -46,26 +46,25 @@ func wsServer(ws *websocket.Conn) {
 }
 
 type server struct {
-	homePage  []byte
-	fsHandler http.Handler
-	state     *State
+	homePage        []byte
+	fsHandler       http.Handler
+	nodeModsHandler http.Handler
+	state           *State
 }
 
 func (s server) serveFile(res http.ResponseWriter, req *http.Request) {
 	path := req.URL.Path
 	if path == "/" || path == "/index.html" || path == "/index" {
-		res.Write(s.homePage)
+		// TODO
+	}
+	if strings.HasPrefix(path, "/node_modules/") {
+		log.Println("Serving node module", path)
+		res.Header().Add("Content-Type", "text/javascript")
+		s.nodeModsHandler.ServeHTTP(res, req)
 	} else {
+		log.Println("Serving file", path)
 		s.fsHandler.ServeHTTP(res, req)
 	}
-}
-
-func readHomePage(dir string) []byte {
-	res, err := os.ReadFile(path.Join(dir, "index.html"))
-	if err != nil {
-		log.Fatal("Could not read index.html in dir: ", dir)
-	}
-	return res
 }
 
 // StartServer starts the main backend server.
@@ -77,13 +76,12 @@ func readHomePage(dir string) []byte {
 // happens if it crashes.
 func StartServer(frontendDir string, logger *slog.Logger, state *State) chan bool {
 	modsDir := path.Join(frontendDir, ModulesDir, "out")
-	home := readHomePage(modsDir)
 	mux := http.NewServeMux()
 
 	s := server{
-		fsHandler: http.FileServer(http.Dir(modsDir)),
-		homePage:  home,
-		state:     state,
+		fsHandler:       http.FileServer(http.Dir(modsDir)),
+		nodeModsHandler: http.FileServer(http.Dir(frontendDir)),
+		state:           state,
 	}
 
 	mux.Handle("/ws", websocket.Handler(wsServer))

@@ -62,8 +62,7 @@ func Build(options BuildOptions) bool {
 		logger.Warn("Error writing eval.js", "error", err)
 	}
 
-	err = CopyDir(path.Join(dir, "assets"),
-		path.Join(dir, ModulesDir, "out"))
+	err = CopyAssetsDir(logger, dir, path.Join(dir, ModulesDir, "out"))
 	if err != nil {
 		logger.Warn("Could not copy assets", "error", err)
 	}

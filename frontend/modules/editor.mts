@@ -1,5 +1,5 @@
+import { Extension } from '@codemirror/state';
 import { EditorView, basicSetup } from "codemirror"
-import { javascript } from "@codemirror/lang-javascript"
 
 const template = document.createElement('template');
 
@@ -24,8 +24,18 @@ template.innerHTML = `
 <div>
 `;
 
+type Language = {
+    "name": string,
+    "extensions": Set<string>,
+};
+
+export const languages: Language[] = [
+    { "name": "javascript", "extensions": new Set([".js", ".ts", ".json", ".mjs", ".mts"]) }
+];
+
 class EditorParent extends HTMLElement {
 
+    readonly languages: Language[]
     readonly rootElement: HTMLDivElement
     readonly fileNameElement: HTMLDivElement
 
@@ -43,17 +53,31 @@ class EditorParent extends HTMLElement {
 
 window.customElements.define('editor-parent', EditorParent);
 
-export function openEditor(path: string, contents: string): string {
+export async function openEditor(name: string, contents: string): Promise<string> {
+    const ext = extension(name);
     const parentElement = document.createElement('editor-parent') as EditorParent;
-    parentElement.fileNameElement.textContent = path;
+    parentElement.fileNameElement.textContent = name;
     document.body.appendChild(parentElement);
+    const extensions: Extension[] = [basicSetup];
+    if (ext) {
+        const lang = languages.find(lang => lang.extensions.has(ext));
+        if (lang) {
+            const langMod = await import(`@codemirror/lang-${lang.name}`);
+            extensions.push(langMod[lang.name]());
+        } else {
+            console.log('No Codemirror language extension found for:', ext);
+        }
+    }
     new EditorView({
         doc: contents,
-        extensions: [
-            basicSetup,
-            javascript(),
-        ],
+        extensions,
         parent: parentElement.rootElement,
     });
     return `Read ${contents.length} bytes.`;
+}
+
+function extension(path: string): string | null {
+    const index = path.lastIndexOf('.');
+    if (index < 0) return null;
+    return path.substring(index);
 }
