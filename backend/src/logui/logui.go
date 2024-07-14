@@ -1,34 +1,38 @@
 package logui
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"log/slog"
 	"sync"
 	"time"
+
+	"github.com/fatih/color"
 )
 
 type FmtTime = func(t time.Time) string
 
 type LogUiHandler struct {
-	level     slog.Level
-	out       io.Writer
-	group     string
-	mux       *sync.Mutex
-	attrs     []slog.Attr
-	attrs_buf []byte
-	fmt_time  FmtTime
+	level      slog.Level
+	out        io.Writer
+	group      string
+	groupColor *color.Color
+	mux        *sync.Mutex
+	attrs      []slog.Attr
+	attrs_buf  []byte
+	fmt_time   FmtTime
 }
 
 // New creates a new LogUiHandler.
-func New(level slog.Level, out io.Writer, group string) *LogUiHandler {
-	return &LogUiHandler{level, out, group, &sync.Mutex{}, []slog.Attr{}, []byte{}, fmtTime}
+func New(level slog.Level, out io.Writer, group string, groupColor *color.Color) *LogUiHandler {
+	return &LogUiHandler{level, out, group, groupColor, &sync.Mutex{}, []slog.Attr{}, []byte{}, fmtTime}
 }
 
 // New creates a new LogUiHandler with a time formatter.
 func NewWithTimeFormatter(level slog.Level, out io.Writer, group string, fmt_time FmtTime) *LogUiHandler {
-	return &LogUiHandler{level, out, group, &sync.Mutex{}, []slog.Attr{}, []byte{}, fmt_time}
+	return &LogUiHandler{level, out, group, nil, &sync.Mutex{}, []slog.Attr{}, []byte{}, fmt_time}
 }
 
 // Enabled implements slog.Handler.
@@ -39,6 +43,7 @@ func (l *LogUiHandler) Enabled(_ context.Context, level slog.Level) bool {
 // WithAttrs implements slog.Handler.
 func (l *LogUiHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	res := NewWithTimeFormatter(l.level, l.out, l.group, l.fmt_time)
+	res.groupColor = l.groupColor
 	res.attrs = make([]slog.Attr, len(l.attrs)+len(attrs))
 	res.attrs = append(res.attrs, l.attrs...)
 	res.attrs = append(res.attrs, attrs...)
@@ -50,7 +55,7 @@ func (l *LogUiHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 
 // WithGroup implements slog.Handler.
 func (l *LogUiHandler) WithGroup(name string) slog.Handler {
-	res := New(l.level, l.out, name)
+	res := New(l.level, l.out, name, l.groupColor)
 	res.attrs = l.attrs
 	return res
 }
@@ -58,8 +63,14 @@ func (l *LogUiHandler) WithGroup(name string) slog.Handler {
 // Handle implements slog.Handler.
 func (l *LogUiHandler) Handle(ctx context.Context, rec slog.Record) error {
 	buf := make([]byte, 0, 512)
-	buf = centerString(buf, l.group, 6)
-	buf = fmt.Appendf(buf, " [%s] %s ", rec.Level.String(), l.fmt_time(rec.Time))
+	buf = centerString(buf, l.group, l.groupColor, 6)
+	b := bytes.NewBuffer(buf)
+	levelColor(rec.Level).Fprintf(b, "[%s]", rec.Level.String())
+	buf = b.Bytes()
+	buf = fmt.Appendf(buf, " %s %s", l.fmt_time(rec.Time), rec.Message)
+	if len(l.attrs_buf) > 0 || rec.NumAttrs() > 0 {
+		buf = append(buf, " | "...)
+	}
 	buf = append(buf, l.attrs_buf...)
 	prepend_comma := len(l.attrs) > 0 && rec.NumAttrs() > 0
 	lastIndex := rec.NumAttrs() - 1
@@ -73,13 +84,11 @@ func (l *LogUiHandler) Handle(ctx context.Context, rec slog.Record) error {
 		index++
 		return true
 	})
-	if len(l.attrs) > 0 || rec.NumAttrs() > 0 {
-		buf = append(buf, " - "...)
+	if len(l.attrs_buf) > 0 || rec.NumAttrs() > 0 {
+		buf = append(buf, " |\n"...)
 	} else {
-		buf = append(buf, "- "...)
+		buf = append(buf, '\n')
 	}
-	buf = append(buf, []byte(rec.Message)...)
-	buf = append(buf, '\n')
 	l.mux.Lock()
 	defer l.mux.Unlock()
 	_, err := l.out.Write(buf)
@@ -131,11 +140,25 @@ func fmtTime(t time.Time) string {
 	return t.Format("15:04:05.9999")
 }
 
-func centerString(buf []byte, s string, width int) []byte {
+func centerString(buf []byte, s string, c *color.Color, width int) []byte {
+	w := bytes.NewBuffer(buf)
 	if len(s) >= width {
-		return append(buf, s...)
+		if c != nil {
+			c.Fprintf(w, "%s", s)
+		} else {
+			w.WriteString(s)
+		}
+	} else {
+		a := (width - len(s)) / 2
+		b := a + len(s)
+		if width%2 != 0 {
+			a++
+		}
+		if c != nil {
+			c.Fprintf(w, "%[1]*[3]s%[2]*[4]s", b, a, s, "")
+		} else {
+			fmt.Fprintf(w, "%[1]*[3]s%[2]*[4]s", b, a, s, "")
+		}
 	}
-	a := (width - len(s)) / 2
-	b := a + len(s)
-	return fmt.Appendf(buf, "%[1]*[3]s%[2]*[4]s", b, a, s, "")
+	return w.Bytes()
 }

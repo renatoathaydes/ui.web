@@ -7,6 +7,7 @@ import (
 	"path"
 	"sync"
 
+	"github.com/fatih/color"
 	uiweb "ui.web/server/src"
 	"ui.web/server/src/logui"
 )
@@ -17,8 +18,8 @@ func main() {
 	be := path.Join("..", "backend-js")
 	fe := path.Join("..", "frontend")
 
-	be_logger := slog.New(logui.New(slog.LevelDebug, os.Stdout, "be"))
-	fe_logger := slog.New(logui.New(slog.LevelDebug, os.Stdout, "fe"))
+	be_logger := slog.New(logui.New(slog.LevelDebug, os.Stdout, "be", color.New(color.BgBlue, color.FgWhite)))
+	fe_logger := slog.New(logui.New(slog.LevelDebug, os.Stdout, "fe", color.New(color.BgMagenta, color.FgWhite)))
 
 	build(uiweb.BuildOptions{Dir: be, ForFrontend: false, Logger: be_logger}, &state)
 	build(uiweb.BuildOptions{Dir: fe, ForFrontend: true, Logger: fe_logger}, &state)
@@ -34,7 +35,7 @@ func build(build_opts uiweb.BuildOptions, state *uiweb.State) {
 		if build_opts.ForFrontend {
 			return uiweb.StartServer(build_opts.Dir, build_opts.Logger, state)
 		}
-		bejs_logger := slog.New(logui.New(slog.LevelDebug, os.Stdout, "be-js"))
+		bejs_logger := slog.New(logui.New(slog.LevelDebug, os.Stdout, "bejs", color.New(color.BgHiBlue, color.FgWhite)))
 		bejs_modsDir := path.Join(build_opts.Dir, uiweb.ModulesDir)
 		return uiweb.StartNode(bejs_modsDir, bejs_logger)
 	}
